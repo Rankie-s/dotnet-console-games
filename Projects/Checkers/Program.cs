@@ -219,7 +219,7 @@ void RenderGameState(Game game, Player? playerMoved = null, (int X, int Y)? sele
 		RenderGameState(game, selection: selection, from: from);
 		switch (Console.ReadKey(true).Key)
 		{
-			case ConsoleKey.DownArrow:  selection.Y = Math.Max(0, selection.Y - 1); break;
+			case ConsoleKey.DownArrow:  selection.Y = Math.Max(0, selection.Y - 1); break; // keep the icon in the board
 			case ConsoleKey.UpArrow:    selection.Y = Math.Min(7, selection.Y + 1); break;
 			case ConsoleKey.LeftArrow:  selection.X = Math.Max(0, selection.X - 1); break;
 			case ConsoleKey.RightArrow: selection.X = Math.Min(7, selection.X + 1); break;

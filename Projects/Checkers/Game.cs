@@ -35,7 +35,7 @@ public class Game
 		}
 		if (move.PieceToCapture is not null) // the destination has an enemy piece
 		{
-			Board.Pieces.Remove(move.PieceToCapture);
+			Board.Pieces.Remove(move.PieceToCapture); // remove the piece from the list
 		}
 		if (move.PieceToCapture is not null && // if it captures a piece and has another piece to capture, it is an Aggressor
 			Board.GetPossibleMoves(move.PieceToMove).Any(m => m.PieceToCapture is not null))
@@ -50,7 +50,7 @@ public class Game
 		CheckForWinner();
 	}
 
-	public void CheckForWinner()
+	public void CheckForWinner() // all pieces left are from one side, this side wins
 	{
 		if (!Board.Pieces.Any(piece => piece.Color is Black))
 		{
