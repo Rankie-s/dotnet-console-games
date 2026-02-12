@@ -6,13 +6,31 @@ public class Board
 
 	public Piece? Aggressor { get; set; }
 
+	// see if there is a piece in (x, y)
 	public Piece? this[int x, int y] =>
 		Pieces.FirstOrDefault(piece => piece.X == x && piece.Y == y);
+	// the same as:
+	/*
+	public Piece? this[int x, int y]
+	{
+		get 
+		{
+			foreach (Piece piece in Pieces)
+			{
+				if (piece.X == x && piece.Y == y)
+				{
+					return piece;
+				}
+			}
+			return null;
+		}
+	}
+	*/
 
 	public Board()
 	{
 		Aggressor = null;
-		Pieces = new List<Piece>
+		Pieces = new List<Piece> // init all 24 pieces at the beginning
 			{
 				new() { NotationPosition ="A3", Color = Black},
 				new() { NotationPosition ="A1", Color = Black},
@@ -42,12 +60,14 @@ public class Board
 			};
 	}
 
-	public static string ToPositionNotationString(int x, int y)
+	// return a string transferred by loc (for example, (2, 3) will be C4)
+	public static string ToPositionNotationString(int x, int y) 
 	{
 		if (!IsValidPosition(x, y)) throw new ArgumentException("Not a valid position!");
-		return $"{(char)('A' + x)}{y + 1}";
+		return $"{(char)('A' + x)}{y + 1}"; 
 	}
 
+	// return a loc (x, y) transferred by string (for example, C4 will be (2, 3))
 	public static (int X, int Y) ParsePositionNotation(string notation)
 	{
 		if (notation is null) throw new ArgumentNullException(nameof(notation));
@@ -63,6 +83,7 @@ public class Board
 		0 <= x && x < 8 &&
 		0 <= y && y < 8;
 
+	// check which enemy piece is the closest to the computer
 	public (Piece A, Piece B) GetClosestRivalPieces(PieceColor priorityColor)
 	{
 		double minDistanceSquared = double.MaxValue;
@@ -83,10 +104,13 @@ public class Board
 		return closestRivals;
 	}
 
+	// If a piece can be captured after capturing a piece, it must be captured first. 
+	// Else, player/computer needs to capture pieces if they can be captured
+	// Else, regular move
 	public List<Move> GetPossibleMoves(PieceColor color)
 	{
 		List<Move> moves = new();
-		if (Aggressor is not null)
+		if (Aggressor is not null) // the player is locked to using the Aggressor if they have one
 		{
 			if (Aggressor.Color != color)
 			{
@@ -101,11 +125,14 @@ public class Board
 				moves.AddRange(GetPossibleMoves(piece));
 			}
 		}
+		// if has pieces to capture, only return moves that can capture
 		return moves.Any(move => move.PieceToCapture is not null)
 			? moves.Where(move => move.PieceToCapture is not null).ToList()
 			: moves;
 	}
 
+	// for all pieces that can be moved, restore all allowed pos
+	// this is inconvenience for players, but good for computer move.
 	public List<Move> GetPossibleMoves(Piece piece)
 	{
 		List<Move> moves = new();
@@ -119,6 +146,7 @@ public class Board
 
 		void ValidateDiagonalMove(int dx, int dy)
 		{
+			// if is a king, skip move limit
 			if (!piece.Promoted && piece.Color is Black && dy is -1) return;
 			if (!piece.Promoted && piece.Color is White && dy is 1) return;
 			(int X, int Y) target = (piece.X + dx, piece.Y + dy);
@@ -142,6 +170,7 @@ public class Board
 		}
 	}
 
+	// check if player move is valid
 	/// <summary>Returns a <see cref="Move"/> if <paramref name="from"/>-&gt;<paramref name="to"/> is valid or null if not.</summary>
 	public Move? ValidateMove(PieceColor color, (int X, int Y) from, (int X, int Y) to)
 	{

@@ -8,7 +8,7 @@ try
 	Game game = ShowIntroScreenAndGetOption();
 	Console.Clear();
 	RunGameLoop(game);
-	RenderGameState(game, promptPressKey: true);
+	RenderGameState(game, promptPressKey: true); // the same as RenderGameState(game, true) but much clearer
 	Console.ReadKey(true);
 }
 catch (Exception e)
@@ -24,6 +24,7 @@ finally
 	Console.WriteLine(exception?.ToString() ?? "Checkers was closed.");
 }
 
+// choose num of players
 Game ShowIntroScreenAndGetOption()
 {
 	Console.Clear();
@@ -53,7 +54,7 @@ Game ShowIntroScreenAndGetOption()
 	Console.Write("    [2] Black (human) vs White (human)");
 
 	int? humanPlayerCount = null;
-	while (humanPlayerCount is null)
+	while (humanPlayerCount is null) // check keyPress. If press a valid num, humanPlayerCount will not be a null any more
 	{
 		Console.CursorVisible = false;
 		switch (Console.ReadKey(true).Key)
@@ -68,7 +69,7 @@ Game ShowIntroScreenAndGetOption()
 
 void RunGameLoop(Game game)
 {
-	while (game.Winner is null)
+	while (game.Winner is null) // no one wins, continue the loop
 	{
 		Player currentPlayer = game.Players.First(player => player.Color == game.Turn);
 		if (currentPlayer.IsHuman)
@@ -78,32 +79,35 @@ void RunGameLoop(Game game)
 				(int X, int Y)? selectionStart = null;
 				(int X, int Y)? from = game.Board.Aggressor is not null ? (game.Board.Aggressor.X, game.Board.Aggressor.Y) : null;
 				List<Move> moves = game.Board.GetPossibleMoves(game.Turn);
+				// if there is a piece that must move(see Move.cs), you can only move it first.
+				// bug: if there are two, the reminder has some bug
 				if (moves.Select(move => move.PieceToMove).Distinct().Count() is 1)
 				{
+					// select the piece for you
 					Move must = moves.First();
 					from = (must.PieceToMove.X, must.PieceToMove.Y);
 					selectionStart = must.To;
 				}
-				while (from is null)
+				while (from is null) // select the piece first, move it later.
 				{
 					from = HumanMoveSelection(game);
 					selectionStart = from;
 				}
 				(int X, int Y)? to = HumanMoveSelection(game, selectionStart: selectionStart, from: from);
 				Piece? piece = null;
-				piece = game.Board[from.Value.X, from.Value.Y];
-				if (piece is null || piece.Color != game.Turn)
+				piece = game.Board[from.Value.X, from.Value.Y]; // get the chosen piece
+				if (piece is null || piece.Color != game.Turn) // no piece or wrong color: get back
 				{
 					from = null;
 					to = null;
 				}
-				if (from is not null && to is not null)
+				if (from is not null && to is not null) // has chosen piece and valid destination?
 				{
 					Move? move = game.Board.ValidateMove(game.Turn, from.Value, to.Value);
-					if (move is not null &&
+					if (move is not null && // can move?
 						(game.Board.Aggressor is null || move.PieceToMove == game.Board.Aggressor))
 					{
-						game.PerformMove(move);
+						game.PerformMove(move); // MOVE!
 					}
 				}
 			}
@@ -112,17 +116,18 @@ void RunGameLoop(Game game)
 		{
 			List<Move> moves = game.Board.GetPossibleMoves(game.Turn);
 			List<Move> captures = moves.Where(move => move.PieceToCapture is not null).ToList();
-			if (captures.Count > 0)
+			if (captures.Count > 0) // can capture? if can, capture first
 			{
 				game.PerformMove(captures[Random.Shared.Next(captures.Count)]);
 			}
+			// can get closer to the king? if can, get closer
 			else if(!game.Board.Pieces.Any(piece => piece.Color == game.Turn && !piece.Promoted))
 			{
 				var (a, b) = game.Board.GetClosestRivalPieces(game.Turn);
 				Move? priorityMove = moves.FirstOrDefault(move => move.PieceToMove == a && Board.IsTowards(move, b));
 				game.PerformMove(priorityMove ?? moves[Random.Shared.Next(moves.Count)]);
 			}
-			else
+			else // randomly move
 			{
 				game.PerformMove(moves[Random.Shared.Next(moves.Count)]);
 			}
@@ -133,6 +138,7 @@ void RunGameLoop(Game game)
 	}
 }
 
+// render the gameboard
 void RenderGameState(Game game, Player? playerMoved = null, (int X, int Y)? selection = null, (int X, int Y)? from = null, bool promptPressKey = false)
 {
 	const char BlackPiece = '○';
@@ -204,6 +210,7 @@ void RenderGameState(Game game, Player? playerMoved = null, (int X, int Y)? sele
 		};
 }
 
+// render the icon O every time the player moves
 (int X, int Y)? HumanMoveSelection(Game game, (int X, int y)? selectionStart = null, (int X, int Y)? from = null)
 {
 	(int X, int Y) selection = selectionStart ?? (3, 3);
