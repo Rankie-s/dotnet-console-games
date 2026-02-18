@@ -8,11 +8,26 @@ public class Game
 	public Board Board { get; }
 	public PieceColor? Winner { get; private set; } // when null, no one wins yet
 	public List<Player> Players { get; }
+	public UndoManager? HistoryRecorder { get; set;} // record the history of the board for UNDO
+	public Shop? GameShop {get;} // the shop for pve mode
 
 	public Game(int humanPlayerCount)
 	{
 		// the input step guarantees it can't be <0 or >2. But this is needed for some reason?
 		if (humanPlayerCount < 0 || 2 < humanPlayerCount) throw new ArgumentOutOfRangeException(nameof(humanPlayerCount));
+
+		// for pve mode, init the HistoryRecorder and Shop; else, set them to null
+		if(humanPlayerCount is 1) 
+		{
+			HistoryRecorder = new();
+			GameShop = new();
+		}
+		else 
+		{
+			HistoryRecorder = null;
+			GameShop = null;
+		}
+
 		Board = new Board();
 		Players = new()
 		{
@@ -23,6 +38,7 @@ public class Game
 		Winner = null;
 	}
 
+	// change: it also check if need to add gold in shop
 	public void PerformMove(Move move)
 	{
 		// the loc of the piece that needs to be moved is moved here
@@ -32,10 +48,26 @@ public class Game
 			(move.PieceToMove.Color is White && move.To.Y is 0))
 		{
 			move.PieceToMove.Promoted = true; // get to the bottom, PROMOT!
+			if (move.PieceToMove.Color is Black) // black means player in pve, so when player turns a token to a king, they get 10 gold
+			{
+				GameShop?.ChangeGold(GetGold.PlayerBecomeKing);
+			}
+			else if (move.PieceToMove.Color is White) // if computer turns a king, player will get 5 gold
+			{
+				GameShop?.ChangeGold(GetGold.EnemyBecomeKing);
+			}
 		}
 		if (move.PieceToCapture is not null) // the destination has an enemy piece
 		{
-			Board.Pieces.Remove(move.PieceToCapture); // remove the piece from the list
+			Board.Pieces.Remove(move.PieceToCapture); // remove the piece from the list (capture it)
+			if (move.PieceToMove.Color is Black) // player captures, gain 10 gold
+			{
+				GameShop?.ChangeGold(GetGold.PlayerCapture);
+			}
+			else if (move.PieceToMove.Color is White)
+			{
+				GameShop?.ChangeGold(GetGold.EnemyCapture); // you get gold if your token is captured.
+			}
 		}
 		if (move.PieceToCapture is not null && // if it captures a piece and has another piece to capture, it is an Aggressor
 			Board.GetPossibleMoves(move.PieceToMove).Any(m => m.PieceToCapture is not null))

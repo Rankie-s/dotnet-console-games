@@ -1,4 +1,6 @@
-﻿Exception? exception = null;
+﻿using System.ComponentModel;
+
+Exception? exception = null;
 
 Encoding encoding = Console.OutputEncoding;
 
@@ -69,33 +71,54 @@ Game ShowIntroScreenAndGetOption()
 
 void RunGameLoop(Game game)
 {
+	// if(game.HistoryRecorder is not null) game.HistoryRecorder.RecordBoard(game.Board); // record the board when start
+	// game.HistoryRecorder?.RecordBoard(game.Board);
+	// It doesn't need to do a record here, but I keep it because it showcases a better way to judge null.
+
 	while (game.Winner is null) // no one wins, continue the loop
 	{
 		Player currentPlayer = game.Players.First(player => player.Color == game.Turn);
-		if (currentPlayer.IsHuman)
+		if (currentPlayer.IsHuman) // human move
 		{
 			while (game.Turn == currentPlayer.Color)
 			{
+				game.HistoryRecorder?.RecordBoard(game.Board); // record the board before the player moves
 				(int X, int Y)? selectionStart = null;
 				(int X, int Y)? from = game.Board.Aggressor is not null ? (game.Board.Aggressor.X, game.Board.Aggressor.Y) : null;
+				bool isUndo = false; // if undo, return true
 				List<Move> moves = game.Board.GetPossibleMoves(game.Turn);
 				// if there is a piece that must move(see Move.cs), you can only move it first.
 				// bug: if there are two, the reminder has some bug
-				if (moves.Select(move => move.PieceToMove).Distinct().Count() is 1)
+				if (moves.Select(move => move.PieceToMove).Distinct().Count() is 1) // don't want to learn LINQ for now
 				{
 					// select the piece for you
 					Move must = moves.First();
 					from = (must.PieceToMove.X, must.PieceToMove.Y);
 					selectionStart = must.To;
 				}
-				while (from is null) // select the piece first, move it later.
+				while (from is null) // select the piece first
 				{
-					from = HumanMoveSelection(game);
+					(isUndo, from) = HumanMoveSelection(game);
 					selectionStart = from;
+					if(isUndo && game.HistoryRecorder is not null) // if choose undo, undo
+					{
+						game.HistoryRecorder.Undo(game);
+						from = null;
+						isUndo = false;
+					}
 				}
-				(int X, int Y)? to = HumanMoveSelection(game, selectionStart: selectionStart, from: from);
+				(isUndo,(int X, int Y)? to) = HumanMoveSelection(game, selectionStart: selectionStart, from: from); // move the selected piece
 				Piece? piece = null;
 				piece = game.Board[from.Value.X, from.Value.Y]; // get the chosen piece
+
+				if(isUndo && game.HistoryRecorder is not null) // if choose undo after choosing and before placing the piece, undo
+				{
+					game.HistoryRecorder.Undo(game);
+					from = null;
+					to = null;
+					isUndo = false;
+				}
+
 				if (piece is null || piece.Color != game.Turn) // no piece or wrong color: get back
 				{
 					from = null;
@@ -112,7 +135,7 @@ void RunGameLoop(Game game)
 				}
 			}
 		}
-		else
+		else // computer move
 		{
 			List<Move> moves = game.Board.GetPossibleMoves(game.Turn);
 			List<Move> captures = moves.Where(move => move.PieceToCapture is not null).ToList();
@@ -164,6 +187,29 @@ void RenderGameState(Game game, Player? playerMoved = null, (int X, int Y)? sele
 	sb.AppendLine($"  1 ║  {B(0, 0)} {B(1, 0)} {B(2, 0)} {B(3, 0)} {B(4, 0)} {B(5, 0)} {B(6, 0)} {B(7, 0)}  ║ {game.TakenCount(Black),2} x {BlackPiece}");
 	sb.AppendLine($"    ╚═══════════════════╝");
 	sb.AppendLine($"       A B C D E F G H");
+	if(game.GameShop is not null) // print shop in pve mode
+	{
+		(char key, string itemName, int cost, int currentNum)[] items = game.GameShop.ItemList;
+		string GoldLeft = game.GameShop.gold.ToString();
+		for(int i= 0; i < items.Length; i++) // show what you can buy (shop)
+		{
+			(char key, string itemName, int cost, int currentNum) item = items[i];
+			sb.AppendLine($"     press {item.key} to spend {item.cost} gold to buy {item.itemName}.");
+		}
+		sb.AppendLine($"     You have {GoldLeft} gold left");
+		sb.AppendLine($"     Items you have now:");
+		for(int i= 0; i < items.Length; i++) // show items you have now
+		{
+			(char key, string itemName, int cost, int currentNum) item = items[i];
+			sb.AppendLine($"         You have {item.currentNum} of {item.itemName} now.");
+		}
+
+		sb.AppendLine($"     Ways to earn gold:");
+		foreach((string way, int earn) earn in game.GameShop.waysToEarnGold) // show how you get gold
+			{
+				sb.AppendLine($"         {earn.way} : {earn.earn} gold");
+			}
+	}
 	sb.AppendLine();
 	if (selection is not null)
 	{
@@ -210,21 +256,24 @@ void RenderGameState(Game game, Player? playerMoved = null, (int X, int Y)? sele
 		};
 }
 
-// render the icon O every time the player moves
-(int X, int Y)? HumanMoveSelection(Game game, (int X, int y)? selectionStart = null, (int X, int Y)? from = null)
+// it needs to return isUndo
+(bool isUndo, (int X, int Y)?) HumanMoveSelection(Game game, (int X, int y)? selectionStart = null, (int X, int Y)? from = null)
 {
 	(int X, int Y) selection = selectionStart ?? (3, 3);
 	while (true)
 	{
 		RenderGameState(game, selection: selection, from: from);
-		switch (Console.ReadKey(true).Key)
+		ConsoleKey key = Console.ReadKey(true).Key;
+		switch (key)
 		{
 			case ConsoleKey.DownArrow:  selection.Y = Math.Max(0, selection.Y - 1); break; // keep the icon in the board
 			case ConsoleKey.UpArrow:    selection.Y = Math.Min(7, selection.Y + 1); break;
 			case ConsoleKey.LeftArrow:  selection.X = Math.Max(0, selection.X - 1); break;
 			case ConsoleKey.RightArrow: selection.X = Math.Min(7, selection.X + 1); break;
-			case ConsoleKey.Enter:      return selection;
-			case ConsoleKey.Escape:     return null;
+			case ConsoleKey.Enter:      return (false, selection);
+			case ConsoleKey.Spacebar:   return (true, null); // if space, undo
+			case ConsoleKey.Escape:     return (false, null); // if esc, quit the game
+			default: game.GameShop?.BuyItem(key); break;
 		}
 	}
 }
