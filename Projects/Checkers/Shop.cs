@@ -5,9 +5,9 @@ public class Shop
     public int gold { get; private set; }
 
     // It should be a dictionary! But its too late for me to realize it
-    public (char key, string item, int cost, int currentNum)[] ItemList = new (char, string, int, int)[]
+    public (char buyKey, string useKey, string item, int cost, int currentNum)[] ItemList = new (char, string, string, int, int)[]
     {
-        ('w', "A chance to Undo", 10, 0)
+        ('w', "Space", "A chance to Undo", 10, 0)
     };
     public (string way, int earn)[] waysToEarnGold = new(string way, int earn)[]
     {

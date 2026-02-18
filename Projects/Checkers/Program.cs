@@ -189,19 +189,19 @@ void RenderGameState(Game game, Player? playerMoved = null, (int X, int Y)? sele
 	sb.AppendLine($"       A B C D E F G H");
 	if(game.GameShop is not null) // print shop in pve mode
 	{
-		(char key, string itemName, int cost, int currentNum)[] items = game.GameShop.ItemList;
+		(char buyKey, string useKey, string itemName, int cost, int currentNum)[] items = game.GameShop.ItemList;
 		string GoldLeft = game.GameShop.gold.ToString();
 		for(int i= 0; i < items.Length; i++) // show what you can buy (shop)
 		{
-			(char key, string itemName, int cost, int currentNum) item = items[i];
-			sb.AppendLine($"     press {item.key} to spend {item.cost} gold to buy {item.itemName}.");
+			(char buyKey, string useKey, string itemName, int cost, int currentNum) item = items[i];
+			sb.AppendLine($"     press {item.buyKey} to spend {item.cost} gold to buy {item.itemName}.");
 		}
 		sb.AppendLine($"     You have {GoldLeft} gold left");
 		sb.AppendLine($"     Items you have now:");
 		for(int i= 0; i < items.Length; i++) // show items you have now
 		{
-			(char key, string itemName, int cost, int currentNum) item = items[i];
-			sb.AppendLine($"         You have {item.currentNum} of {item.itemName} now.");
+			(char buyKey, string useKey, string itemName, int cost, int currentNum) item = items[i];
+			sb.AppendLine($"         You have {item.currentNum} of {item.itemName} now. Press {item.useKey} to use it");
 		}
 
 		sb.AppendLine($"     Ways to earn gold:");
