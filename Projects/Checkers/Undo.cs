@@ -38,7 +38,8 @@ public class UndoManager
     // trigger: when the player press the certain button
     public void Undo(Game game)
     {
-        if (History.Count <= 1) return; // can't undo the first step
+        if(History.Count <= 1) return; // can't undo the first step
+        if(game.GameShop!.ItemList[0].currentNum <= 0) return;
 
         // remove the last history count
         History.RemoveAt(History.Count - 1);
@@ -66,6 +67,32 @@ public class UndoManager
         // Bug: I can't read the last Aggressor now. Maybe I should add the aggressor data to history list?
         game.Board.Aggressor = null;
 
+    }
+    public void Reset(Game game)
+    {
+        // no reset at the start
+        if (History.Count == 0) return;
 
+        List<Piece> initState = History[0]; // init state of the board
+
+        // clear all history and leave init only. delete all then add the first should be quicker
+        History.Clear();
+        History.Add(initState);
+
+        // reset the board like  Undo
+        game.Board.Pieces.Clear();
+        foreach (Piece p in initState)
+        {
+            Piece piece = new()
+            {
+                X = p.X,
+                Y = p.Y,
+                Color = p.Color,
+                Promoted = p.Promoted
+            };
+            game.Board.Pieces.Add(piece);
+        }
+
+        game.Board.Aggressor = null;
     }
 }
